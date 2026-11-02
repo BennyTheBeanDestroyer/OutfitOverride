@@ -1,0 +1,95 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>OutfitOverride</AssemblyName>
+    <RootNamespace>OutfitOverride</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>Outfit Override</Product>
+    <Description>Skua plugin: toggleable CoreBots loadout override using AQW Wardrobe outfits, with an Ultra Change outfit for scripts that set up their own class, gear and enhancements.</Description>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DebugType>none</DebugType>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <!-- Compiles against your installed Skua (not included in this repo). Other location: -p:SkuaDir="D:\Path\To\Skua".
+         A local .\lib folder with copies of Skua's DLLs also works. -->
+    <SkuaDir Condition="'$(SkuaDir)' == ''">C:\Program Files\Skua</SkuaDir>
+    <SkuaLibs Condition="Exists('$(SkuaDir)\Assemblies\Skua.Core.dll')">$(SkuaDir)\Assemblies</SkuaLibs>
+    <SkuaLibs Condition="'$(SkuaLibs)' == '' and Exists('$(SkuaDir)\Skua.Core.dll')">$(SkuaDir)</SkuaLibs>
+    <SkuaLibs Condition="'$(SkuaLibs)' == ''">$(MSBuildProjectDirectory)\lib</SkuaLibs>
+
+    <!-- Skua loads plugins from %APPDATA%\Skua\plugins -->
+    <SkuaPluginsDir>$(APPDATA)\Skua\plugins</SkuaPluginsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Harmony is embedded into OutfitOverride.dll (see EmbedHarmony below), so only one DLL is installed. -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Skua.Core">
+      <HintPath>$(SkuaLibs)\Skua.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Skua.Core.Interfaces">
+      <HintPath>$(SkuaLibs)\Skua.Core.Interfaces.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Skua.Core.Models">
+      <HintPath>$(SkuaLibs)\Skua.Core.Models.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Skua.Core.Utils">
+      <HintPath>$(SkuaLibs)\Skua.Core.Utils.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Skua.WPF">
+      <HintPath>$(SkuaLibs)\Skua.WPF.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MaterialDesignThemes.Wpf">
+      <HintPath>$(SkuaLibs)\MaterialDesignThemes.Wpf.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="CommunityToolkit.Mvvm">
+      <HintPath>$(SkuaLibs)\CommunityToolkit.Mvvm.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(SkuaLibs)\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckSkuaDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(SkuaLibs)\Skua.Core.dll')"
+           Text="Skua.Core.dll not found in '$(SkuaLibs)'. Build with -p:SkuaDir=&quot;path\to\your\Skua&quot; (the folder containing Skua.exe)." />
+  </Target>
+
+  <Target Name="EmbedHarmony" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(ReferenceCopyLocalPaths)"
+                        Condition="'%(Filename)%(Extension)' == '0Harmony.dll'"
+                        LogicalName="0Harmony.dll" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Release build: also put the finished plugin in .\release, ready to share. -->
+  <Target Name="CopyToRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Copy SourceFiles="$(TargetPath);README.md" DestinationFolder="$(MSBuildProjectDirectory)\release" />
+  </Target>
+
+  <Target Name="InstallPlugin" AfterTargets="CopyToRelease" Condition="'$(Configuration)' == 'Release' and Exists('$(SkuaPluginsDir)')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SkuaPluginsDir)" Retries="0" ContinueOnError="true">
+      <Output TaskParameter="CopiedFiles" ItemName="_Installed" />
+    </Copy>
+    <Message Importance="high" Condition="'@(_Installed)' != ''" Text="Installed $(TargetFileName) to $(SkuaPluginsDir) - restart Skua to load it." />
+    <Message Importance="high" Condition="'@(_Installed)' == ''" Text="BUILT OK, but not installed: Skua is running and has the old plugin open. Close Skua and run build.bat again." />
+  </Target>
+
+</Project>

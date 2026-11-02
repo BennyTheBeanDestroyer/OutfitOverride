@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+release/
+build.log
+
+# Local copies of Skua's DLLs (not redistributable - build against your installed Skua instead)
+lib/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
